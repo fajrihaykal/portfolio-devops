@@ -1,0 +1,37 @@
+name: CI - Portfolio Build and Test
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t portfolio-devops:test .
+
+      - name: Run container
+        run: docker run -d --name portfolio-test -p 8080:80 portfolio-devops:test
+
+      - name: Integration test
+        run: |
+          curl --retry 10 --retry-delay 2 --retry-connrefused http://localhost:8080 -o response.html
+          grep -q "Fajri Haykal Rahman" response.html
+          echo "Portfolio integration test passed!"
+
+      - name: Container logs if test fails
+        if: failure()
+        run: docker logs portfolio-test || true
+
+      - name: Cleanup
+        if: always()
+        run: docker rm -f portfolio-test || true
